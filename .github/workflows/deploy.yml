@@ -1,4 +1,4 @@
-name: Auto Deploy to EC2
+name: Auto Deploy to EC2 (Staging)
 
 on:
   push:
@@ -7,21 +7,37 @@ on:
 
 jobs:
   deploy:
+    name: Deploy Frappe to EC2
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Deploy to EC2
+      - name: Deploy to EC2 via SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          username: ec2-user
+          key: ${{ secrets.EC2_KEY }}
+          port: 22
           script: |
+            set -e
+
+            echo "🚀 Starting deployment on EC2"
+
             cd ~/frappe_docker
-            git pull origin main
+
+            echo "🔄 Switching to staging branch"
+            git fetch origin
+            git checkout staging
+            git pull origin staging
+
+            echo "🐳 Pulling latest Docker images"
             docker-compose -f pwd.yml pull
+
+            echo "♻️ Restarting services"
             docker-compose -f pwd.yml up -d
+
+            echo "✅ Deployment completed successfully"
 
